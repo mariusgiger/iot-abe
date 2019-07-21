@@ -1,0 +1,117 @@
+# 1) build environment
+FROM balenalib/raspberrypi3-ubuntu-golang as builder
+#ENV GOLANG_VERSION 1.11.9
+
+RUN apt-get update && apt-get install -y wget git gcc curl musl-dev libtool
+
+# install dep
+WORKDIR ${GOPATH}/src/github.com/mariusgiger/iot-abe
+
+# install c crypto dependencies
+RUN apt-get update && apt-get install -y libglib2.0-dev flex bison libssl-dev libgmp-dev
+RUN wget https://crypto.stanford.edu/pbc/files/pbc-0.5.14.tar.gz -O ./pbc-0.5.14.tar.gz && \
+    tar -zxvf pbc-0.5.14.tar.gz && cd pbc-0.5.14/ && \
+    ./configure && \
+    make && \
+    make install
+RUN wget http://hms.isi.jhu.edu/acsc/cpabe/libbswabe-0.9.tar.gz -O ./libbswabe-0.9.tar.gz && \
+    tar -zxvf libbswabe-0.9.tar.gz && \
+    cd libbswabe-0.9 && \
+    ./configure && \ 
+    make && \ 
+    make install
+
+COPY pkg/crypto/policy_lang.y.linux ./policy_lang.y
+COPY pkg/crypto/Makefile.arm Makefile
+RUN wget http://hms.isi.jhu.edu/acsc/cpabe/cpabe-0.11.tar.gz -O ./cpabe-0.11.tar.gz && \
+    tar -zxvf cpabe-0.11.tar.gz && \
+    cd cpabe-0.11 && \ 
+    ./configure && \ 
+    #fixes missing semicolon 
+    cp ../policy_lang.y policy_lang.y && \
+    #fixes adding -lgmp to linker command (At THE END!) 
+    cp ../Makefile Makefile && \
+    echo "MAKESTART" && \
+    cat Makefile && \
+    echo "MAKEEND" && \
+    make && \ 
+    make install
+
+# build app
+#RUN export DEP_ARCH=aarch64 && curl -s https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+RUN go get -u github.com/golang/dep/cmd/dep
+
+# install dependencies and fix eth bug
+RUN go get -v "github.com/ethereum/go-ethereum/crypto/secp256k1" 
+COPY Gopkg.toml Gopkg.lock ./
+RUN dep ensure -v -vendor-only
+RUN cp -r "${GOPATH}/src/github.com/ethereum/go-ethereum/crypto/secp256k1/libsecp256k1" "vendor/github.com/ethereum/go-ethereum/crypto/secp256k1/"
+
+WORKDIR ${GOPATH}/src/github.com/mariusgiger/iot-abe
+COPY . ./
+
+RUN export VERSION=$(git describe --tags 2>/dev/null) && \
+    export GITHASH=$(git log -1 --format='%H') && \
+    export BUILDTIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ') && \
+    GOARCH=arm GOARM=7 GOOS=linux CGO_ENABLED=1 go build -tags="netgo" -a -o /out/iot-abe \
+    -ldflags "-X github.com/mariusgiger/iot-abe/cmd.Version=${VERSION} -X github.com/mariusgiger/iot-abe/cmd.GitHash=${GITHASH} -X github.com/mariusgiger/iot-abe/cmd.BuildTime=${BUILDTIME} -w -extldflags '-static'" .
+
+# 3) tools
+# FROM balenalib/rpi-raspbian as tools
+# RUN apt-get update && apt-get install -y \
+#     build-essential \
+#     cmake \
+#     curl \
+#     git \
+#     && apt-get clean \
+#     && rm -rf /var/lib/apt/lists/*
+
+# WORKDIR /
+# RUN git clone --depth 1 https://github.com/raspberrypi/userland.git
+
+# WORKDIR /userland
+# RUN chmod +x buildme
+# RUN ./buildme
+
+# 3) deploy environment
+#TODO this could be optimized by using debian stretch-slim
+#https://github.com/balena-io-library/base-images/blob/master/balena-base-images/armv7hf/debian/stretch/run/Dockerfile
+FROM balenalib/armv7hf-debian:stretch-run as production
+
+LABEL io.balena.device-type="raspberrypi3"
+RUN echo "deb http://archive.raspbian.org/raspbian stretch main contrib non-free rpi firmware" >>  /etc/apt/sources.list \
+    && apt-key adv --batch --keyserver ha.pool.sks-keyservers.net  --recv-key 0x9165938D90FDDD2E \
+    && echo "deb http://archive.raspberrypi.org/debian stretch main ui" >>  /etc/apt/sources.list.d/raspi.list \
+    && apt-key adv --batch --keyserver ha.pool.sks-keyservers.net  --recv-key 0x82B129927FA3303E
+
+RUN apt-get update -y && \
+    apt-get install libraspberrypi-bin -y && \ 
+    rm -rf /var/lib/apt/lists/*
+
+#RUN usermod -a -G video root
+COPY --from=builder /out/iot-abe /app/bin/iot-abe
+COPY config.yml ./config.yml
+
+ENV PATH /opt/vc/bin:/opt/vc/lib:$PATH
+
+RUN /bin/sh -c "/app/bin/iot-abe -c './config.yml' --help"
+EXPOSE 8080
+ENTRYPOINT ["/app/bin/iot-abe"]
+CMD ["server"]
+
+# FROM balenalib/armv7hf-alpine:run as production-slim
+# WORKDIR /app
+# COPY --from=builder /out/iot-abe /app/bin/iot-abe
+# COPY --from=tools /opt/vc/bin/* /opt/vc/bin/
+# COPY --from=tools /opt/vc/lib/* /usr/lib/
+# COPY --from=tools /usr/lib/* /usr/lib/
+# COPY config.yml ./config.yml
+
+# ENV PATH /opt/vc/bin:/opt/vc/lib:$PATH
+# RUN apk --no-cache add ca-certificates libc6-compat
+
+# RUN /bin/sh -c "bin/iot-abe -c './config.yml' --help"
+# RUN /bin/sh -c "raspistill"
+# EXPOSE 8080
+# ENTRYPOINT ["bin/iot-abe"]
+# CMD ["server"]

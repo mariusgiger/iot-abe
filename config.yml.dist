@@ -1,0 +1,9 @@
+ethNodeUrl: "https://ropsten.infura.io/VXvjqjXP3mdoLV3TndbM"
+ethWssNodeUrl: "wss://ropsten.infura.io/ws"
+etherscanAPIKey: "<your etherscan api key>"
+etherscanURL: "http://api-ropsten.etherscan.io"
+useTestnet: true
+clientCert: ""
+clientCertKey: ""
+ethKeystoreDir: "~/.iot-abe/ks/"
+dataDir: "~/.iot-abe/"

@@ -1,0 +1,18 @@
+{
+  "deploy": {
+    "gasUsed": 2440334,
+    "tx": "0x29faa8855906a511e7d9efa045bd6c8f283f487acdfe7c5238f11bd9cfd4c154"
+  },
+  "grant": {
+    "attrLength": 10,
+    "attributes": 6,
+    "encryptedKeyLength": 1899,
+    "gasUsed": 2873500,
+    "keyLength": 1786,
+    "tx": "0xaf7ccf0f1f6a702c517bb126b4cd30c01ef7b055dfde2ed9d9ae43382c9a6d2d"
+  },
+  "request": {
+    "gasUsed": 43293,
+    "tx": "0x126cf81c406fd8680296636346fb815c5ea1c96d7d84e8b427e6375b55a442d4"
+  }
+}

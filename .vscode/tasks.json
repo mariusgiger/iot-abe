@@ -1,0 +1,15 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "start dlv",
+      "type": "shell",
+      "command": "dlv debug --headless --listen=:2345 --log --api-version=2 -- grant access --for=\"0x1e52b030261C4890A6aCe85Ed48CaE5f459525A0\" --contract=\"0xC695C023d4A2FfB1C98e0d609A7Ff02e858AF09e\" --owner=\"0x20683Db6E6d7ff53b62BCD6F723f74eC94dC410e\" --attributes=\"admin,ceo,it_staff\"",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
+}

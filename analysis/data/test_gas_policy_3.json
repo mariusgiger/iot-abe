@@ -1,0 +1,12 @@
+{
+  "deploy": {
+    "gasUsed": 2440334,
+    "tx": "0x9172157ab4e27d0e556f0c7a174f36388bf73c228ef3a96b0920ce7b624029fa"
+  },
+  "policy": {
+    "gasUsed": 90399,
+    "policy": "(BOsMDtBnvT and IxqkYRfjJY and ZKcFdErNaS)",
+    "policyLen": 42,
+    "tx": "0x216f8bff98b1e679f31da9dbe5049ef645efb5e19ffd593708dae7e3d27259a8"
+  }
+}

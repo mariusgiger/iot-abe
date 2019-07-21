@@ -1,0 +1,23 @@
+{
+  "name": "iot-abe",
+  "version": "1.0.0",
+  "description": "attribute-based access control for the IoT",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "eth-crypto": "^1.3.3",
+    "ethereumjs-tx": "^1.3.7",
+    "ethereumjs-util": "^6.1.0",
+    "ganache-cli": "^6.4.2",
+    "truffle": "^5.0.10",
+    "truffle-assertions": "^0.8.2",
+    "web3": "^1.0.0-beta.52"
+  }
+}

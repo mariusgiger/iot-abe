@@ -1,0 +1,49 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Go Debug",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}",
+      "cwd": "${workspaceFolder}",
+      "env": {},
+      "args": [
+        "devices",
+        "get-all",
+        "--contract",
+        "0xC695C023d4A2FfB1C98e0d609A7Ff02e858AF09e"
+      ],
+      "showLog": true
+    },
+    {
+      "name": "Go Remote Debug",
+      "type": "go",
+      "request": "launch",
+      "mode": "remote",
+      "remotePath": "${workspaceFolder}",
+      "cwd": "${workspaceFolder}",
+      "port": 2345,
+      "host": "127.0.0.1",
+      "program": "${workspaceFolder}",
+      "env": {}
+    },
+    {
+      "name": "Launch test package",
+      "type": "go",
+      "request": "launch",
+      "mode": "test",
+      "program": "${workspaceRoot}/pkg/crypto"
+    },
+    {
+      "name": "run contract-tests",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceRoot}/contract/node_modules/truffle/build/cli.bundled.js",
+      "args": ["test"],
+      "cwd": "${workspaceRoot}/contract/",
+      "outFiles": ["${workspaceRoot}/contract/test/**/*"]
+    }
+  ]
+}

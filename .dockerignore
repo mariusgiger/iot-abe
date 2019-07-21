@@ -1,0 +1,9 @@
+/vendor/
+/analysis/
+/.vscode/
+LICENSE
+README.md
+output/
+Dockerfile
+Dockerfile.*
+Makefile

@@ -1,0 +1,8 @@
+{
+  "files.associations": {
+    "common.h": "c"
+  },
+  "go.testFlags": ["-v"],
+  "go.testTimeout": "600s",
+  "C_Cpp.default.cppStandard": "c++11"
+}
