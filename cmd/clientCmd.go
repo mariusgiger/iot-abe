@@ -49,11 +49,11 @@ var getDataCmd = &cobra.Command{
 	},
 }
 
-// serveCaptureCmd represents the serve decrypted image command
-var serveCaptureCmd = &cobra.Command{
-	Use:   "serve-capture",
-	Short: "Exposes an endpoint to view decrypted images.",
-	Long:  `Exposes an endpoint to view decrypted images.`,
+// serveClientCmd represents the serve decrypted image command
+var serveClientCmd = &cobra.Command{
+	Use:   "serve",
+	Short: "Exposes an endpoint to view decrypted images and video stream.",
+	Long:  `Exposes an endpoint to view decrypted images and video stream.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		wm := wallet.NewManager(log, cfg.EthKeystoreDir)
 		rpcClient, err := rpc.NewRPCClient(log, cfg)
@@ -97,12 +97,12 @@ func init() {
 	getDataCmd.Flags().StringVar(&getDataOptions.contract, "contract", "0xC695C023d4A2FfB1C98e0d609A7Ff02e858AF09e", "contract address")
 	getDataCmd.Flags().StringVar(&getDataOptions.user, "user", "0x1e52b030261C4890A6aCe85Ed48CaE5f459525A0", "user address (private key must be in the keystore)")
 
-	serveCaptureCmd.Flags().StringVarP(&serveCaptureOptions.clientInterface, "bind", "", "0.0.0.0", "interface to which the client will bind")
-	serveCaptureCmd.Flags().IntVarP(&serveCaptureOptions.clientPort, "port", "p", 8081, "port on which the client will listen")
-	serveCaptureCmd.Flags().StringVarP(&serveCaptureOptions.serverURL, "server", "", "http://localhost:8080", "url of the IoT device server")
-	serveCaptureCmd.Flags().StringVar(&serveCaptureOptions.contract, "contract", "0xC695C023d4A2FfB1C98e0d609A7Ff02e858AF09e", "contract address")
-	serveCaptureCmd.Flags().StringVar(&serveCaptureOptions.user, "user", "0x1e52b030261C4890A6aCe85Ed48CaE5f459525A0", "user address (private key must be in the keystore)")
+	serveClientCmd.Flags().StringVarP(&serveCaptureOptions.clientInterface, "bind", "", "0.0.0.0", "interface to which the client will bind")
+	serveClientCmd.Flags().IntVarP(&serveCaptureOptions.clientPort, "port", "p", 8081, "port on which the client will listen")
+	serveClientCmd.Flags().StringVarP(&serveCaptureOptions.serverURL, "server", "", "http://localhost:8080", "url of the IoT device server")
+	serveClientCmd.Flags().StringVar(&serveCaptureOptions.contract, "contract", "0xC695C023d4A2FfB1C98e0d609A7Ff02e858AF09e", "contract address")
+	serveClientCmd.Flags().StringVar(&serveCaptureOptions.user, "user", "0x1e52b030261C4890A6aCe85Ed48CaE5f459525A0", "user address (private key must be in the keystore)")
 
-	clientCmd.AddCommand(getDataCmd, serveCaptureCmd)
+	clientCmd.AddCommand(getDataCmd, serveClientCmd)
 	RootCmd.AddCommand(clientCmd)
 }

@@ -115,15 +115,6 @@ Refer to:
 
 - `ecrecover` does not yield the correct result when using Ganache (see [Getting wrong address back](https://ethereum.stackexchange.com/questions/12621/getting-the-wrong-address-back-from-ecrecover/12684) and [ecrecover from web3](https://ethereum.stackexchange.com/questions/15364/ecrecover-from-geth-and-web3-eth-sign))
 
-## Start a private Ethereum network
-
-geth --datadir="/Users/Merryous/go/src/github.com/mariusgiger/iot-abe/contract/tmp/eth/" -verbosity 6 init genesis.json console 2>> ./tmp/eth/01.log
-
-admin.nodeInfo.enode
-
-geth --datadir="/Users/Merryous/go/src/github.com/mariusgiger/iot-abe/contract/tmp/eth/" -verbosity 6 --networkid 15 bootnode --genkey=boot.key console 2>> ./tmp/eth/01.log
-geth --datadir="/Users/Merryous/go/src/github.com/mariusgiger/iot-abe/contract/tmp/eth/" -verbosity 6 --networkid 15 bootnode --nodekey=boot.key console 2>> ./tmp/eth/01.log
-
 ## Raspberry Pi Integration
 
 - [Getting started](https://projects.raspberrypi.org/en/projects/raspberry-pi-getting-started/2)
@@ -177,47 +168,66 @@ Use "iot-abe [command] --help" for more information about a command.
 ### Examples
 
 ```{.sh}
+# list wallets
 ./output/iot-abe wallet list
+
+# transfer Ether between accounts
 ./output/iot-abe wallet transfer --from 0x20683Db6E6d7ff53b62BCD6F723f74eC94dC410e --to 0x1e52b030261C4890A6aCe85Ed48CaE5f459525A0 --amount 0.01
+
+# initialize ABE system for data owner
 ./output/iot-abe grant init --from 0xBB79396384ed533476b9D2Edf6c25797Ab3eD2cD
+
+# watch access requests
 ./output/iot-abe grant watch-requests --contract=0x7bF73B9dFA1d9A520de1Bd4BB829d4Dc602b4567
+
+# request access for data user
 ./output/iot-abe request access --contract 0x7bF73B9dFA1d9A520de1Bd4BB829d4Dc602b4567 --for 0xa9a0E7C567f5fE4f9C7f684b3398FD74041385BF
+
+# get all access requests
 ./output/iot-abe grant get-requests --contract 0xC695C023d4A2FfB1C98e0d609A7Ff02e858AF09e
+
+# watch access grants
 ./output/iot-abe request watch-grants --contract 0xC695C023d4A2FfB1C98e0d609A7Ff02e858AF09e
+
+# grant specified attributes for a data user by a data owner
 ./output/iot-abe grant access --for=0x1e52b030261C4890A6aCe85Ed48CaE5f459525A0 --contract=0xC695C023d4A2FfB1C98e0d609A7Ff02e858AF09e --owner=0x20683Db6E6d7ff53b62BCD6F723f74eC94dC410e --attributes="admin,ceo,it_staff"
+
+# get an access grant for a data user
 ./output/iot-abe request get-grant --for 0x1e52b030261C4890A6aCe85Ed48CaE5f459525A0 --contract 0xC695C023d4A2FfB1C98e0d609A7Ff02e858AF09e
+
+# watch device policy changes
 ./output/iot-abe devices watch-policy-updated --contract=0xC695C023d4A2FfB1C98e0d609A7Ff02e858AF09e
+
+# set a device policy
 ./output/iot-abe devices add --contract=0xC695C023d4A2FfB1C98e0d609A7Ff02e858AF09e --owner=0x20683Db6E6d7ff53b62BCD6F723f74eC94dC410e --device=0xE1097bAAA914277A8E2AefE464f8E29557e5f046 --name="Camera A" --policy="(admin & it_departement)"
+
+# get device policy for device
 ./output/iot-abe devices get --contract=0xC695C023d4A2FfB1C98e0d609A7Ff02e858AF09e --device=0xE1097bAAA914277A8E2AefE464f8E29557e5f046
+
+# get all device policies
 ./output/iot-abe devices get-all --contract 0xC695C023d4A2FfB1C98e0d609A7Ff02e858AF09e
+
+# watch device policy removals
 ./output/iot-abe devices watch-policy-removed --contract=0xC695C023d4A2FfB1C98e0d609A7Ff02e858AF09e
+
+# remove a device policy
 ./output/iot-abe devices remove --contract=0xC695C023d4A2FfB1C98e0d609A7Ff02e858AF09e --device=0xE1097bAAA914277A8E2AefE464f8E29557e5f046 --owner=0x20683Db6E6d7ff53b62BCD6F723f74eC94dC410e
+
+# start an iot-abe device server
 ./output/iot-abe server
-./output/iot-abe client
-./output/iot-abe client serve-capture --server http://192.168.1.54:8080
+
+# start an iot-abe client
+./output/iot-abe client serve --server http://192.168.1.54:8080
 ```
-
-## Help
-
-[free space Raspberry](https://scribles.net/free-up-sd-card-space-on-raspberry-pi/)
 
 ## Links
 
-- https://github.com/golang/go/wiki/cgo#global-functions
-- https://developer.gnome.org/glib/stable/glib-Byte-Arrays.html
-- https://stackoverflow.com/questions/35673161/convert-go-byte-to-a-c-char
-- Have a look at: https://github.com/ethereum/EIPs/issues/1481
-- https://solidity.readthedocs.io/en/develop/types.html#arrays
-- https://web3js.readthedocs.io/en/1.0/web3-utils.html#hextobytes
-- https://manojpramesh.github.io/solidity-cheatsheet/#dynamic-byte-arrays
-- https://gist.github.com/OR13/08e2ceba147b52ef078c4527e1c48a25
-- https://github.com/pubkey/eth-crypto#recoverpublickey
-- https://github.com/ethereum/go-ethereum/wiki/Native-DApps:-Go-bindings-to-Ethereum-contracts
-- https://github.com/ethereum/go-ethereum/tree/master/crypto/ecies
-- https://medium.com/@diogok/on-golang-static-binaries-cross-compiling-and-plugins-1aed33499671
-- https://ownyourbits.com/2018/06/27/running-and-building-arm-docker-containers-in-x86/
-- https://medium.com/@diogok/on-golang-static-binaries-cross-compiling-and-plugins-1aed33499671
-- https://medium.com/@chrischdi/cross-compiling-go-for-raspberry-pi-dc09892dc745
-- https://github.com/balena-io-library
-- https://stackoverflow.com/questions/54842833/access-raspistill-pi-camera-inside-a-docker-container
-- https://github.com/sgerrand/docker-glibc-builder
+- [EIP for access control](https://github.com/ethereum/EIPs/issues/1481)
+- [Recover Ethereum public key in Javascript](https://gist.github.com/OR13/08e2ceba147b52ef078c4527e1c48a25)
+- [EthCrypto recover public key](https://github.com/pubkey/eth-crypto#recoverpublickey)
+- [go-ethereum smart contract bindings](https://github.com/ethereum/go-ethereum/wiki/Native-DApps:-Go-bindings-to-Ethereum-contracts)
+- [go-Ethereum ECIES](https://github.com/ethereum/go-ethereum/tree/master/crypto/ecies)
+- [ARM Docker containers](https://ownyourbits.com/2018/06/27/running-and-building-arm-docker-containers-in-x86/)
+- [Go cross-compilation static binary](https://medium.com/@diogok/on-golang-static-binaries-cross-compiling-and-plugins-1aed33499671)
+- [Go cross-compilation for RPI](https://medium.com/@chrischdi/cross-compiling-go-for-raspberry-pi-dc09892dc745)
+- [Free space on a Raspberry](https://scribles.net/free-up-sd-card-space-on-raspberry-pi/)

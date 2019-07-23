@@ -94,6 +94,12 @@ import (
 	"unsafe"
 )
 
+/*
+	Helpful links
+	GLib ByteArray: https://developer.gnome.org/glib/stable/glib-Byte-Arrays.html
+	Converting Go Bytes to C char array: https://stackoverflow.com/questions/35673161/convert-go-byte-to-a-c-char
+*/
+
 // helper for memcopying byte arras to char arrays
 func memcpy(dest *C.uchar, src []byte) int {
 	n := len(src)
