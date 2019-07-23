@@ -75,24 +75,18 @@ build: ## Builds the cli
 	CGO_ENABLED=1 go build -tags netgo -o output/iot-abe \
 -ldflags "-X github.com/mariusgiger/iot-abe/cmd.Version=${VERSION} -X github.com/mariusgiger/iot-abe/cmd.GitHash=${GITHASH} -X github.com/mariusgiger/iot-abe/cmd.BuildTime=${BUILDTIME}" .
 
-docker-build:
+docker-build: ## Builds a docker image iot-abe
 	docker build -t "mariusgiger/iot-abe:builder"  --target builder . && \
     docker build -t "mariusgiger/iot-abe:latest" .
 
-docker-build-arm:
+docker-build-arm: ## Builds a docker image for iot-abe for ARM architecture
 	docker build -f Dockerfile.arm -t "mariusgiger/iot-abe:arm-builder"  --target builder . && \
     docker build -f Dockerfile.arm  -t "mariusgiger/iot-abe:arm-latest" .
 
 docker-publish-arm:
 	docker push mariusgiger/iot-abe:arm-latest
 
-docker-run: 
-	docker run --name iot-abe --rm 	-p8080:8080 mariusgiger/iot-abe:latest server
-
-docker-run-rpi:
-	#TODO mount raspistill dir
-	#mount device
-	#mount volume for data -v `pwd`:`pwd`
+docker-run-rpi: ## Runs iot-abe server on a raspberry
 	docker run --name iot-abe --rm --privileged --device=/dev/vchiq -p8080:8080 mariusgiger/iot-abe:arm-latest server
 
 # "-count=1" is used to avoid test result caching
@@ -117,10 +111,8 @@ cover-html: ## Generates a global code coverage report in HTML
 analyze: ## Opens analysis env
 	$(shell cd ./analysis && source bin/activate && jupyter notebook)
 
-rpi-connect:
+rpi-connect: ## Connects to a RPI
 	ssh pi@192.168.1.54
 
 help: ## Display this help screen
 	grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
-
-

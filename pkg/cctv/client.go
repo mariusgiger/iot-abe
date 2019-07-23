@@ -10,7 +10,6 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
-	"os"
 	"text/template"
 	"time"
 
@@ -56,8 +55,8 @@ func NewClient(serverURL string, contract, user common.Address, accManager *acc.
 	}
 }
 
-//GetData retrieves data from the server and decrypts it
-func (c *Client) GetData() (string, error) {
+//GetMsg retrieves data from the server and decrypts it
+func (c *Client) GetMsg() (string, error) {
 	acl, err := c.manager.ACLByAddress(c.user, c.contract)
 	if err != nil {
 		return "", errors.Wrap(err, "could not retrieve acl")
@@ -123,37 +122,8 @@ func (c *Client) GetData() (string, error) {
 	return string(clearText), nil
 }
 
-//GetImage retrieves an image from the server
-func (c *Client) GetImage() (string, error) {
-	url, err := utils.ParseURL(c.serverURL)
-	if err != nil {
-		return "", errors.Wrap(err, "could not parse server url")
-	}
-	url = url.AddPath("capture")
-
-	resp, err := http.Get(url.String())
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	path := "/tmp/asdf.jpg"
-	file, err := os.Create(path)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-
-	_, err = io.Copy(file, resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	return path, nil
-}
-
-//ServeImage retrieves an image from the server
-func (c *Client) ServeImage(bind string) error {
+//Serve starts an http server that exposes the decrypted image stream
+func (c *Client) Serve(bind string) error {
 	c.log.Infof("starting iot client on: %v", bind)
 	handler := c.MakeClientHandler()
 
@@ -177,7 +147,6 @@ func (c *Client) ServeImage(bind string) error {
 // MakeClientHandler mounts all of the service endpoints into an http.Handler.
 func (c *Client) MakeClientHandler() http.Handler {
 	root := mux.NewRouter()
-
 	root.Use(c.logging)
 
 	root.Path("/capture").
@@ -185,7 +154,7 @@ func (c *Client) MakeClientHandler() http.Handler {
 		Methods(http.MethodGet)
 
 	root.Path("/stream").
-		HandlerFunc(c.serveStream).
+		HandlerFunc(c.serveStreamHandler).
 		Methods(http.MethodGet)
 
 	root.Path("/").
@@ -195,28 +164,8 @@ func (c *Client) MakeClientHandler() http.Handler {
 	return root
 }
 
-// logging is a simple logging middleware
-func (c *Client) logging(next http.Handler) http.Handler {
-	mw := func(w http.ResponseWriter, r *http.Request) {
-
-		L := c.log.WithContext(r.Context()).WithFields(logrus.Fields{
-			"remote": r.RemoteAddr,
-			"method": r.Method,
-			"url":    r.URL,
-		})
-
-		L.Info("request received")
-		defer func(begin time.Time) {
-			L.WithField("took", time.Since(begin)).Info("request completed")
-		}(time.Now())
-
-		next.ServeHTTP(w, r)
-	}
-
-	return http.HandlerFunc(mw)
-}
-
-func (c *Client) serveStream(w http.ResponseWriter, r *http.Request) {
+// serveStreamHandler handles GET /stream endpoint
+func (c *Client) serveStreamHandler(w http.ResponseWriter, r *http.Request) {
 	m := multipart.NewWriter(w)
 	defer m.Close()
 
@@ -327,53 +276,6 @@ func (c *Client) serveStream(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-const (
-	privKeyCacheKey = "abe.privKey"
-)
-
-func (c *Client) getPubKey() ([]byte, error) {
-	if key, found := c.cache.Get(pubKeyCacheKey); found {
-		return key.([]byte), nil
-	}
-
-	pubKey, err := c.manager.PubKey(c.contract)
-	if err != nil {
-		return nil, errors.Wrapf(err, "could not retrieve pubKey from contract (%v)", c.contract)
-	}
-	pubKeyBytes, err := hexutil.Decode(pubKey)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not decode pubKey")
-	}
-
-	c.cache.Set(pubKeyCacheKey, pubKeyBytes, cache.DefaultExpiration)
-	return pubKeyBytes, nil
-}
-
-func (c *Client) getPrivKey() ([]byte, error) {
-	if key, found := c.cache.Get(privKeyCacheKey); found {
-		return key.([]byte), nil
-	}
-
-	acl, err := c.manager.ACLByAddress(c.user, c.contract)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not retrieve acl")
-	}
-
-	encryptedKeyBytes, err := hexutil.Decode(acl.EncryptedKey)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not decode encrypte key")
-	}
-
-	keyBytes, err := c.wm.DecryptMessage(c.user, encryptedKeyBytes)
-	if err != nil {
-		c.log.Infof("key: %v", string(encryptedKeyBytes))
-		return nil, errors.Wrap(err, "could not decrypt priv key")
-	}
-
-	c.cache.Set(privKeyCacheKey, keyBytes, cache.DefaultExpiration)
-	return keyBytes, nil
-}
-
 // captureHandler handles GET /capture endpoint
 func (c *Client) captureHandler(w http.ResponseWriter, r *http.Request) {
 	image, status, err := func() ([]byte, int, error) {
@@ -401,7 +303,7 @@ func (c *Client) captureHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return nil, http.StatusInternalServerError, errors.Wrap(err, "could not parse server url")
 		}
-		url = url.AddPath("captureenc")
+		url = url.AddPath("capture")
 
 		resp, err := c.httpClient.
 			NewRequest(context.Background()).
@@ -457,7 +359,6 @@ func (c *Client) streamSiteHandler() func(w http.ResponseWriter, r *http.Request
 
 	data := struct {
 		Title  string
-		Len    int
 		Stream string
 	}{
 		Title:  "MJPG Server",
@@ -465,8 +366,74 @@ func (c *Client) streamSiteHandler() func(w http.ResponseWriter, r *http.Request
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		//TODO load metadata from server
-		data.Len = 1 //converter.Len()
 		err = t.Execute(w, data)
 	}
+}
+
+// logging is a simple logging middleware
+func (c *Client) logging(next http.Handler) http.Handler {
+	mw := func(w http.ResponseWriter, r *http.Request) {
+
+		L := c.log.WithContext(r.Context()).WithFields(logrus.Fields{
+			"remote": r.RemoteAddr,
+			"method": r.Method,
+			"url":    r.URL,
+		})
+
+		L.Info("request received")
+		defer func(begin time.Time) {
+			L.WithField("took", time.Since(begin)).Info("request completed")
+		}(time.Now())
+
+		next.ServeHTTP(w, r)
+	}
+
+	return http.HandlerFunc(mw)
+}
+
+const (
+	privKeyCacheKey = "abe.privKey"
+)
+
+func (c *Client) getPubKey() ([]byte, error) {
+	if key, found := c.cache.Get(pubKeyCacheKey); found {
+		return key.([]byte), nil
+	}
+
+	pubKey, err := c.manager.PubKey(c.contract)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not retrieve pubKey from contract (%v)", c.contract)
+	}
+	pubKeyBytes, err := hexutil.Decode(pubKey)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not decode pubKey")
+	}
+
+	c.cache.Set(pubKeyCacheKey, pubKeyBytes, cache.DefaultExpiration)
+	return pubKeyBytes, nil
+}
+
+func (c *Client) getPrivKey() ([]byte, error) {
+	if key, found := c.cache.Get(privKeyCacheKey); found {
+		return key.([]byte), nil
+	}
+
+	acl, err := c.manager.ACLByAddress(c.user, c.contract)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not retrieve acl")
+	}
+
+	encryptedKeyBytes, err := hexutil.Decode(acl.EncryptedKey)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not decode encrypte key")
+	}
+
+	keyBytes, err := c.wm.DecryptMessage(c.user, encryptedKeyBytes)
+	if err != nil {
+		c.log.Infof("key: %v", string(encryptedKeyBytes))
+		return nil, errors.Wrap(err, "could not decrypt priv key")
+	}
+
+	c.cache.Set(privKeyCacheKey, keyBytes, cache.DefaultExpiration)
+	return keyBytes, nil
 }

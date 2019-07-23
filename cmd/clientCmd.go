@@ -22,8 +22,8 @@ var clientCmd = &cobra.Command{
 // getDataCmd represents the get data command
 var getDataCmd = &cobra.Command{
 	Use:   "data",
-	Short: "Retrieves encrypted data from an iot device server and decrypts it (if possible)",
-	Long:  `Retrieves encrypted data from an iot device server and decrypts it (if possible).`,
+	Short: "Retrieves encrypted data from an iot device server and decrypts it (if possible) - used for testing",
+	Long:  `Retrieves encrypted data from an iot device server and decrypts it (if possible) - used for testing.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		wm := wallet.NewManager(log, cfg.EthKeystoreDir)
 		rpcClient, err := rpc.NewRPCClient(log, cfg)
@@ -39,29 +39,12 @@ var getDataCmd = &cobra.Command{
 		user := common.HexToAddress(getDataOptions.user)
 
 		client := cctv.NewClient(getDataOptions.serverURL, contract, user, accManager, wm, log)
-		message, err := client.GetData()
+		message, err := client.GetMsg()
 		if err != nil {
 			return err
 		}
 
 		log.Infof("got message: %v", message)
-		return nil
-	},
-}
-
-// getImageCmd represents the get image command
-var getImageCmd = &cobra.Command{
-	Use:   "image",
-	Short: "Retrieves an image from an iot device server.",
-	Long:  `Retrieves an image from an iot device server.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		client := cctv.NewClient(getImageOptions.serverURL, common.Address{}, common.Address{}, nil, nil, log)
-		path, err := client.GetImage()
-		if err != nil {
-			return err
-		}
-
-		log.Infof("retrieved image: %v", path)
 		return nil
 	},
 }
@@ -87,7 +70,7 @@ var serveCaptureCmd = &cobra.Command{
 		user := common.HexToAddress(serveCaptureOptions.user)
 		client := cctv.NewClient(serveCaptureOptions.serverURL, contract, user, accManager, wm, log)
 
-		return client.ServeImage(net.JoinHostPort(serveCaptureOptions.clientInterface, strconv.Itoa(serveCaptureOptions.clientPort)))
+		return client.Serve(net.JoinHostPort(serveCaptureOptions.clientInterface, strconv.Itoa(serveCaptureOptions.clientPort)))
 	},
 }
 
@@ -114,15 +97,12 @@ func init() {
 	getDataCmd.Flags().StringVar(&getDataOptions.contract, "contract", "0xC695C023d4A2FfB1C98e0d609A7Ff02e858AF09e", "contract address")
 	getDataCmd.Flags().StringVar(&getDataOptions.user, "user", "0x1e52b030261C4890A6aCe85Ed48CaE5f459525A0", "user address (private key must be in the keystore)")
 
-	getImageCmd.Flags().StringVarP(&getImageOptions.serverURL, "server", "", "http://localhost:8080", "url of the IoT device server")
-
 	serveCaptureCmd.Flags().StringVarP(&serveCaptureOptions.clientInterface, "bind", "", "0.0.0.0", "interface to which the client will bind")
 	serveCaptureCmd.Flags().IntVarP(&serveCaptureOptions.clientPort, "port", "p", 8081, "port on which the client will listen")
 	serveCaptureCmd.Flags().StringVarP(&serveCaptureOptions.serverURL, "server", "", "http://localhost:8080", "url of the IoT device server")
 	serveCaptureCmd.Flags().StringVar(&serveCaptureOptions.contract, "contract", "0xC695C023d4A2FfB1C98e0d609A7Ff02e858AF09e", "contract address")
 	serveCaptureCmd.Flags().StringVar(&serveCaptureOptions.user, "user", "0x1e52b030261C4890A6aCe85Ed48CaE5f459525A0", "user address (private key must be in the keystore)")
 
-	clientCmd.AddCommand(getDataCmd, getImageCmd, serveCaptureCmd)
-
+	clientCmd.AddCommand(getDataCmd, serveCaptureCmd)
 	RootCmd.AddCommand(clientCmd)
 }

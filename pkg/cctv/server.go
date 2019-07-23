@@ -1,7 +1,6 @@
 package cctv
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -163,17 +162,17 @@ func (s *Server) MakeHandler() http.Handler {
 	root := mux.NewRouter()
 	root.MethodNotAllowedHandler = http.HandlerFunc(s.notAllowed)
 	root.NotFoundHandler = http.HandlerFunc(s.notFound)
-	//root.Use(s.recoverPanic)
+	root.Use(s.recoverPanic)
 	root.Use(s.logging)
 	root.Use(s.timeout(10 * time.Second)) // for all handlers
 
-	root.Path("/encrypt").
-		HandlerFunc(s.encryptHandler).
+	root.Path("/encryptmsg").
+		HandlerFunc(s.encryptMsgHandler).
 		Methods(http.MethodGet)
 
 	//NOTE this endpoint only serves as a test endpoint and exposes camera without ac
 	root.Path("/capture").
-		HandlerFunc(s.captureHandler).
+		HandlerFunc(s.captureEncryptedHandler).
 		Methods(http.MethodGet)
 
 	root.Path("/stream").
@@ -184,10 +183,6 @@ func (s *Server) MakeHandler() http.Handler {
 		HandlerFunc(s.streamSiteHandler()).
 		Methods(http.MethodGet)
 
-	root.Path("/captureenc").
-		HandlerFunc(s.captureEncryptedHandler).
-		Methods(http.MethodGet)
-
 	// GET version
 	root.Path("/version").
 		HandlerFunc(s.getVersion).
@@ -196,8 +191,8 @@ func (s *Server) MakeHandler() http.Handler {
 	return root
 }
 
-// encryptHandler handles GET /encrypt endpoint
-func (s *Server) encryptHandler(w http.ResponseWriter, r *http.Request) {
+// encryptMsgHandler handles GET /encryptmsg endpoint
+func (s *Server) encryptMsgHandler(w http.ResponseWriter, r *http.Request) {
 	// get response and HTTP status
 	resp, status, err := func() (interface{}, int, error) {
 		pubKey, err := s.manager.PubKey(s.contract) //TODO cache
@@ -234,60 +229,9 @@ func (s *Server) encryptHandler(w http.ResponseWriter, r *http.Request) {
 	utils.MustWriteJSON(w, s.checkError(err, resp), status)
 }
 
-// captureHandler handles GET /capture endpoint
-func (s *Server) captureHandler(w http.ResponseWriter, r *http.Request) {
-	image, err := s.camera.Capture()
-	if err != nil {
-		resp := &ErrorResponse{
-			Error: err.Error(),
-		}
-		utils.MustWriteJSON(w, resp, http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "image/jpeg")
-	http.ServeContent(w, r, "camera.jpg", time.Now(), bytes.NewReader(image))
-}
-
-const (
-	pubKeyCacheKey = "abe.pubkey"
-	policyCacheKey = "device.policy"
-)
-
-func (s *Server) getPubKey() ([]byte, error) {
-	if key, found := s.cache.Get(pubKeyCacheKey); found {
-		return key.([]byte), nil
-	}
-
-	pubKey, err := s.manager.PubKey(s.contract)
-	if err != nil {
-		return nil, errors.Wrapf(err, "could not retrieve pubKey from contract (%v)", s.contract)
-	}
-	pubKeyBytes, err := hexutil.Decode(pubKey)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not decode pubKey")
-	}
-
-	s.cache.Set(pubKeyCacheKey, pubKeyBytes, cache.DefaultExpiration)
-	return pubKeyBytes, nil
-}
-
-func (s *Server) getPolicy() (*acc.DevicePolicyEntry, error) {
-	if policy, found := s.cache.Get(policyCacheKey); found {
-		return policy.(*acc.DevicePolicyEntry), nil
-	}
-
-	policy, err := s.manager.DevicePolicyByAddress(s.deviceAddr, s.contract)
-	if err != nil {
-		return nil, errors.Wrapf(err, "could not retrieve device policy for (%v)", s.deviceAddr)
-	}
-
-	s.cache.Set(policyCacheKey, policy, cache.DefaultExpiration)
-	return policy, nil
-}
-
 // captureEncryptedHandler handles GET /captureenc endpoint
 func (s *Server) captureEncryptedHandler(w http.ResponseWriter, r *http.Request) {
+	// TODO this does not work while serving video stream --> get latest image from stream instead of starting camera
 	// get response and HTTP status
 	resp, status, err := func() (interface{}, int, error) {
 		start := time.Now()
@@ -353,6 +297,43 @@ func (s *Server) streamSiteHandler() func(w http.ResponseWriter, r *http.Request
 		//data.Len = s.broadcast.Len()
 		err = t.Execute(w, data)
 	}
+}
+
+const (
+	pubKeyCacheKey = "abe.pubkey"
+	policyCacheKey = "device.policy"
+)
+
+func (s *Server) getPubKey() ([]byte, error) {
+	if key, found := s.cache.Get(pubKeyCacheKey); found {
+		return key.([]byte), nil
+	}
+
+	pubKey, err := s.manager.PubKey(s.contract)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not retrieve pubKey from contract (%v)", s.contract)
+	}
+	pubKeyBytes, err := hexutil.Decode(pubKey)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not decode pubKey")
+	}
+
+	s.cache.Set(pubKeyCacheKey, pubKeyBytes, cache.DefaultExpiration)
+	return pubKeyBytes, nil
+}
+
+func (s *Server) getPolicy() (*acc.DevicePolicyEntry, error) {
+	if policy, found := s.cache.Get(policyCacheKey); found {
+		return policy.(*acc.DevicePolicyEntry), nil
+	}
+
+	policy, err := s.manager.DevicePolicyByAddress(s.deviceAddr, s.contract)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not retrieve device policy for (%v)", s.deviceAddr)
+	}
+
+	s.cache.Set(policyCacheKey, policy, cache.DefaultExpiration)
+	return policy, nil
 }
 
 //ErrorResponse is returned on error
